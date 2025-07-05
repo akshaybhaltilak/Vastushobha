@@ -739,7 +739,7 @@ const Projects = () => {
                                 transition={{ duration: 0.3 }}
                                 className="bg-white text-red-600 px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300"
                             >
-                                Get Started Today
+                                 Started Today
                             </motion.button>
                         </div>
                     </motion.div>
