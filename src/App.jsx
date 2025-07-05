@@ -9,6 +9,7 @@ import Projects from "./Pages/Projects/Projects";
 import Services from "./Pages/Services/Services";
 import About from "./Pages/AboutUs/About";
 import ContactForm from "./Pages/ContactUs/ContactUs";
+import ProjectsAdmin from "./Pages/Projects/ProjectAdmin";
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -29,6 +30,7 @@ function App() {
               <Route path="contact" element={<ContactForm />} />
               <Route path="about" element={<About />} />
               <Route path="ourwork" element={<Projects />} />
+              <Route path="admin" element={<ProjectsAdmin/>} />
               <Route path="ourwork/:slug" element={<ProjectDetail />} />
             </Route>
           </Routes>

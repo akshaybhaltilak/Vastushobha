@@ -421,7 +421,7 @@ const ContactForm = () => {
                       <div>
                         <h3 className="text-lg font-medium text-red-800">Email Us</h3>
                         <a href="mailto:emergeconstructionconsultants@gmail.com" className="text-red-600 hover:text-red-800 transition-colors">
-                          vastushobhaconstructiongmail.com
+                          vastushobhaconstructions@gmail.com
                         </a>
                       </div>
                     </motion.div>

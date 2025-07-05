@@ -1,77 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, useAnimation, useInView } from 'framer-motion';
-
-// Mock data for demonstration
-const mockProjects = [
-    {
-        id: 1,
-        title: "Modern Residential Complex",
-        category: "Residential",
-        imageUrl: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=500",
-        address: "Akola, Maharashtra",
-        shortDescription: "A contemporary residential complex featuring modern amenities and sustainable design principles.",
-        timeline: "18 months",
-        totalArea: "50,000 sq ft",
-        budget: "₹2.5 Cr",
-        client: "Green Valley Developers",
-        year: "2023",
-        slug: "modern-residential-complex"
-    },
-    {
-        id: 2,
-        title: "Corporate Office Tower",
-        category: "Commercial",
-        imageUrl: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=500",
-        address: "Nagpur, Maharashtra",
-        shortDescription: "A state-of-the-art corporate office building with smart building technologies.",
-        timeline: "24 months",
-        totalArea: "75,000 sq ft",
-        budget: "₹5.2 Cr",
-        client: "Tech Solutions Ltd",
-        year: "2023",
-        slug: "corporate-office-tower"
-    },
-    {
-        id: 3,
-        title: "Luxury Villa Estate",
-        category: "Residential",
-        imageUrl: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=500",
-        address: "Mumbai, Maharashtra",
-        shortDescription: "Exclusive luxury villas with premium finishes and landscaped gardens.",
-        timeline: "12 months",
-        totalArea: "25,000 sq ft",
-        budget: "₹8.5 Cr",
-        client: "Elite Homes",
-        year: "2024",
-        slug: "luxury-villa-estate"
-    },
-    {
-        id: 4,
-        title: "Shopping Mall Complex",
-        category: "Commercial",
-        imageUrl: "https://images.unsplash.com/photo-1555636222-cae831e670b3?w=500",
-        address: "Pune, Maharashtra",
-        shortDescription: "Multi-level shopping complex with entertainment zones and food courts.",
-        timeline: "30 months",
-        totalArea: "120,000 sq ft",
-        budget: "₹15 Cr",
-        client: "Metro Mall Group",
-        year: "2024",
-        slug: "shopping-mall-complex"
-    }
-];
+import { database } from './Firebase';
+import { ref as databaseRef, onValue } from 'firebase/database';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Projects = () => {
-    const ref = useRef(null);
-    const projectsRef = useRef(null);
-    const isInView = useInView(ref, { once: true, margin: "-50px" });
+    const containerRef = useRef(null);
+    const projectsContainerRef = useRef(null);
+    const isInView = useInView(containerRef, { once: true, margin: "-50px" });
     const controls = useAnimation();
     const [scrollPosition, setScrollPosition] = useState(0);
     const [maxScroll, setMaxScroll] = useState(0);
 
     const [activeCategory, setActiveCategory] = useState('all');
     const [filteredProjects, setFilteredProjects] = useState([]);
+    const [allProjects, setAllProjects] = useState([]);
     const [categories, setCategories] = useState(['all']);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (isInView) {
@@ -80,26 +27,100 @@ const Projects = () => {
     }, [isInView, controls]);
 
     useEffect(() => {
-        if (projectsRef.current) {
-            setMaxScroll(projectsRef.current.scrollWidth - projectsRef.current.clientWidth);
+        if (projectsContainerRef.current) {
+            setMaxScroll(projectsContainerRef.current.scrollWidth - projectsContainerRef.current.clientWidth);
         }
-    }, [projectsRef, filteredProjects]);
+    }, [projectsContainerRef, filteredProjects]);
 
     useEffect(() => {
-        const allCategories = mockProjects.map(project => project.category);
-        const uniqueCategories = ['all', ...new Set(allCategories.filter(Boolean))];
-        setCategories(uniqueCategories);
-        setFilteredProjects(mockProjects);
+        const fetchProjects = () => {
+            setLoading(true);
+            setError(null);
+            
+            try {
+                const dbRef = databaseRef(database, 'projects');
+                
+                const unsubscribe = onValue(dbRef, (snapshot) => {
+                    try {
+                        const data = snapshot.val();
+                        
+                        if (!data) {
+                            setAllProjects([]);
+                            setFilteredProjects([]);
+                            setCategories(['all']);
+                            setLoading(false);
+                            return;
+                        }
+                        
+                        // Transform data into array and sort by featured first, then by createdAt
+                        const projectsArray = Object.keys(data).map(key => ({
+                            id: key,
+                            title: data[key].title || 'Untitled Project',
+                            category: data[key].category || 'uncategorized',
+                            imageUrl: data[key].imageUrl || '',
+                            address: data[key].address || '',
+                            shortDescription: data[key].shortDescription || '',
+                            timeline: data[key].timeline || '',
+                            totalArea: data[key].totalArea || '',
+                            budget: data[key].budget || '',
+                            client: data[key].client || '',
+                            year: data[key].year || '',
+                            slug: data[key].slug || '',
+                            featured: data[key].featured || false,
+                            status: data[key].status || 'Completed',
+                            createdAt: data[key].createdAt || new Date().toISOString(),
+                            ...data[key]
+                        })).sort((a, b) => {
+                            // Featured projects first
+                            if (a.featured && !b.featured) return -1;
+                            if (!a.featured && b.featured) return 1;
+                            // Then by creation date (newest first)
+                            return new Date(b.createdAt) - new Date(a.createdAt);
+                        });
+                        
+                        setAllProjects(projectsArray);
+                        setFilteredProjects(projectsArray);
+                        
+                        // Extract unique categories
+                        const allCategories = projectsArray.map(project => project.category);
+                        const uniqueCategories = ['all', ...new Set(allCategories.filter(Boolean))];
+                        setCategories(uniqueCategories);
+                        
+                    } catch (parseError) {
+                        console.error("Data parsing error:", parseError);
+                        setError("Failed to parse projects data");
+                        toast.error("Error loading project data");
+                    } finally {
+                        setLoading(false);
+                    }
+                }, (error) => {
+                    console.error("Firebase error:", error);
+                    setError("Failed to fetch projects from database");
+                    toast.error("Connection error loading projects");
+                    setLoading(false);
+                });
+
+                return () => unsubscribe();
+                
+            } catch (error) {
+                console.error("Setup error:", error);
+                setError("Failed to initialize projects fetch");
+                toast.error("Error initializing projects");
+                setLoading(false);
+            }
+        };
+
+        fetchProjects();
     }, []);
 
     const handleScroll = (direction) => {
-        if (projectsRef.current) {
+        if (projectsContainerRef.current) {
             const scrollAmount = window.innerWidth > 768 ? 400 : 300;
             const newPosition = direction === 'right'
                 ? Math.min(scrollPosition + scrollAmount, maxScroll)
                 : Math.max(scrollPosition - scrollAmount, 0);
 
-            projectsRef.current.scrollTo({
+            projectsContainerRef.current.scrollTo({
                 left: newPosition,
                 behavior: 'smooth'
             });
@@ -108,8 +129,8 @@ const Projects = () => {
     };
 
     const handleProjectsScroll = () => {
-        if (projectsRef.current) {
-            setScrollPosition(projectsRef.current.scrollLeft);
+        if (projectsContainerRef.current) {
+            setScrollPosition(projectsContainerRef.current.scrollLeft);
         }
     };
 
@@ -117,14 +138,14 @@ const Projects = () => {
         setActiveCategory(category);
 
         if (category === 'all') {
-            setFilteredProjects(mockProjects);
+            setFilteredProjects(allProjects);
         } else {
-            const filtered = mockProjects.filter(project => project.category === category);
+            const filtered = allProjects.filter(project => project.category === category);
             setFilteredProjects(filtered);
         }
 
-        if (projectsRef.current) {
-            projectsRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        if (projectsContainerRef.current) {
+            projectsContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
             setScrollPosition(0);
         }
     };
@@ -205,8 +226,41 @@ const Projects = () => {
         }
     };
 
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-red-50/30 py-20 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+                <div className="text-center bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl max-w-md">
+                    <div className="bg-red-100 p-4 rounded-full inline-flex mb-4">
+                        <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Error Loading Projects</h3>
+                    <p className="text-gray-600 mb-6">{error}</p>
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                    >
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-red-50/30 py-20 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-600 mx-auto mb-4"></div>
+                    <p className="text-lg font-medium text-gray-700">Loading projects...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-red-50/30 py-20 px-4 sm:px-6 lg:px-8 overflow-hidden relative" ref={ref}>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-red-50/30 py-20 px-4 sm:px-6 lg:px-8 overflow-hidden relative" ref={containerRef}>
             {/* Animated Background Elements */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <motion.div 
@@ -233,22 +287,10 @@ const Projects = () => {
                     }}
                     className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-blue-200/30 to-purple-200/30 rounded-full blur-3xl"
                 />
-                <motion.div 
-                    animate={{ 
-                        y: [-20, 20, -20],
-                        opacity: [0.3, 0.6, 0.3]
-                    }}
-                    transition={{ 
-                        duration: 8, 
-                        repeat: Infinity, 
-                        ease: "easeInOut" 
-                    }}
-                    className="absolute top-1/3 right-1/4 w-64 h-64 bg-gradient-to-bl from-yellow-200/30 to-orange-200/30 rounded-full blur-2xl"
-                />
             </div>
 
             <div className="max-w-7xl mx-auto relative z-10">
-                {/* Enhanced Header Section */}
+                {/* Header Section */}
                 <motion.div
                     initial={{ opacity: 0, y: -30 }}
                     animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -285,11 +327,11 @@ const Projects = () => {
                         transition={{ duration: 0.6, delay: 0.5 }}
                         className="text-lg sm:text-xl text-gray-600 max-w-4xl mx-auto mt-8 leading-relaxed"
                     >
-                        Discover our portfolio of exceptional projects that showcase innovation, craftsmanship, and architectural excellence.
+                        Discover our portfolio of {allProjects.length}+ exceptional projects that showcase innovation, craftsmanship, and architectural excellence.
                     </motion.p>
                 </motion.div>
 
-                {/* Enhanced Category Filter */}
+                {/* Category Filter */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -331,8 +373,8 @@ const Projects = () => {
                     </div>
                 </motion.div>
 
-                {/* Enhanced Projects Grid */}
-                {filteredProjects.length > 0 && (
+                {/* Projects Grid */}
+                {filteredProjects.length > 0 ? (
                     <div className="relative">
                         {/* Navigation Buttons */}
                         <div className="hidden lg:block">
@@ -375,7 +417,7 @@ const Projects = () => {
                             initial="hidden"
                             animate={controls}
                             className="flex overflow-x-auto snap-x snap-mandatory pb-8 px-4 lg:px-12 space-x-8 scrollbar-hide"
-                            ref={projectsRef}
+                            ref={projectsContainerRef}
                             onScroll={handleProjectsScroll}
                             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                         >
@@ -385,53 +427,52 @@ const Projects = () => {
                                     custom={index}
                                     variants={cardVariants}
                                     whileHover="hover"
-                                    className="flex-shrink-0 w-[350px] sm:w-[400px] snap-center group"
+                                    className="flex-shrink-0 w-[350px] sm:w-[400px] snap-center group relative"
                                 >
+                                    {project.featured && (
+                                        <div className="absolute top-4 left-4 z-20 bg-yellow-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                                            Featured
+                                        </div>
+                                    )}
                                     <div className="bg-white/80 backdrop-blur-sm rounded-3xl overflow-hidden shadow-xl border border-white/50 h-full">
-                                        {/* Enhanced Image Container */}
+                                        {/* Image Container */}
                                         <div className="relative h-64 overflow-hidden">
                                             <motion.img
                                                 variants={imageVariants}
                                                 src={project.imageUrl}
                                                 alt={project.title}
                                                 className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    e.target.onerror = null;
+                                                    e.target.src = 'https://via.placeholder.com/800x600?text=Project+Image';
+                                                }}
                                             />
                                             
-                                            {/* Animated Overlay */}
+                                            {/* Overlay */}
                                             <motion.div
                                                 variants={overlayVariants}
                                                 className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"
                                             />
                                             
-                                            {/* Floating Category Badge */}
+                                            {/* Status Badge */}
                                             <motion.div
                                                 initial={{ opacity: 0, scale: 0.8 }}
                                                 whileInView={{ opacity: 1, scale: 1 }}
-                                                className="absolute top-4 left-4 z-10"
+                                                className="absolute top-4 right-4 z-10"
                                             >
-                                                <span className="px-4 py-2 bg-white/90 backdrop-blur-sm text-red-600 text-sm font-bold rounded-full shadow-lg border border-white/50">
-                                                    {project.category}
+                                                <span className={`px-3 py-1 bg-white/90 backdrop-blur-sm text-sm font-bold rounded-full shadow-lg border border-white/50 ${
+                                                    project.status === 'Completed' 
+                                                        ? 'text-green-600' 
+                                                        : project.status === 'In Progress' 
+                                                        ? 'text-yellow-600' 
+                                                        : 'text-gray-600'
+                                                }`}>
+                                                    {project.status}
                                                 </span>
-                                            </motion.div>
-                                            
-                                            {/* Floating Stats */}
-                                            <motion.div
-                                                initial={{ opacity: 0, y: 20 }}
-                                                whileHover={{ opacity: 1, y: 0 }}
-                                                className="absolute bottom-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300"
-                                            >
-                                                <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-lg">
-                                                    <div className="flex items-center space-x-2 text-sm">
-                                                        <svg className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        <span className="font-semibold text-gray-700">{project.timeline}</span>
-                                                    </div>
-                                                </div>
                                             </motion.div>
                                         </div>
 
-                                        {/* Enhanced Content */}
+                                        {/* Content */}
                                         <div className="p-6 space-y-4">
                                             <div>
                                                 <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-1">
@@ -441,14 +482,14 @@ const Projects = () => {
                                                     <svg className="h-4 w-4 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                                     </svg>
-                                                    {project.address}
+                                                    {project.address || 'Location not specified'}
                                                 </div>
                                                 <p className="text-gray-600 text-sm line-clamp-2 leading-relaxed">
-                                                    {project.shortDescription}
+                                                    {project.shortDescription || 'No description available'}
                                                 </p>
                                             </div>
 
-                                            {/* Enhanced Stats Grid */}
+                                            {/* Stats Grid */}
                                             <div className="grid grid-cols-2 gap-3">
                                                 <motion.div
                                                     whileHover={{ scale: 1.02 }}
@@ -462,7 +503,9 @@ const Projects = () => {
                                                         </div>
                                                         <div>
                                                             <p className="text-xs text-gray-600 font-medium">Area</p>
-                                                            <p className="text-sm font-bold text-gray-900">{project.totalArea}</p>
+                                                            <p className="text-sm font-bold text-gray-900">
+                                                                {project.totalArea || 'N/A'}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </motion.div>
@@ -479,7 +522,9 @@ const Projects = () => {
                                                         </div>
                                                         <div>
                                                             <p className="text-xs text-gray-600 font-medium">Budget</p>
-                                                            <p className="text-sm font-bold text-gray-900">{project.budget}</p>
+                                                            <p className="text-sm font-bold text-gray-900">
+                                                                {project.budget || 'N/A'}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </motion.div>
@@ -489,15 +534,19 @@ const Projects = () => {
                                             <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                                                 <div>
                                                     <p className="text-xs text-gray-500 font-medium">Client</p>
-                                                    <p className="text-sm font-semibold text-gray-700">{project.client}</p>
+                                                    <p className="text-sm font-semibold text-gray-700">
+                                                        {project.client || 'Private'}
+                                                    </p>
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-xs text-gray-500 font-medium">Year</p>
-                                                    <p className="text-sm font-semibold text-gray-700">{project.year}</p>
+                                                    <p className="text-sm font-semibold text-gray-700">
+                                                        {project.year || 'N/A'}
+                                                    </p>
                                                 </div>
                                             </div>
 
-                                            {/* Enhanced CTA Button */}
+                                            {/* CTA Button */}
                                             <motion.button
                                                 variants={buttonVariants}
                                                 initial="initial"
@@ -555,9 +604,23 @@ const Projects = () => {
                             </motion.div>
                         </motion.div>
                     </div>
+                ) : (
+                    <div className="text-center py-12">
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg inline-block">
+                            <svg className="h-16 w-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <h3 className="text-xl font-medium text-gray-700 mb-2">No projects found</h3>
+                            <p className="text-gray-500">
+                                {activeCategory === 'all' 
+                                    ? 'No projects have been added yet' 
+                                    : `No projects found in the ${activeCategory} category`}
+                            </p>
+                        </div>
+                    </div>
                 )}
 
-                {/* Enhanced Stats Section */}
+                {/* Stats Section */}
                 <motion.div
                     initial={{ opacity: 0, y: 40 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -566,7 +629,7 @@ const Projects = () => {
                     className="mt-24 grid grid-cols-2 lg:grid-cols-4 gap-6"
                 >
                     {[
-                        { value: "50+", label: "Projects Completed", icon: "🏗️", color: "from-blue-500 to-blue-600" },
+                        { value: `${allProjects.length}+`, label: "Projects Completed", icon: "🏗️", color: "from-blue-500 to-blue-600" },
                         { value: "8+", label: "Years Experience", icon: "⏰", color: "from-green-500 to-green-600" },
                         { value: "100+", label: "Happy Clients", icon: "😊", color: "from-purple-500 to-purple-600" },
                         { value: "15", label: "Awards Won", icon: "🏆", color: "from-yellow-500 to-yellow-600" }
@@ -604,7 +667,7 @@ const Projects = () => {
                             >
                                 {stat.value}
                             </motion.h3>
-                           <p className="text-gray-600 font-medium">{stat.label}</p>
+                            <p className="text-gray-600 font-medium">{stat.label}</p>
                         </motion.div>
                     ))}
                 </motion.div>
