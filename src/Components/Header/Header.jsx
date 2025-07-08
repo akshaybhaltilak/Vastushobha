@@ -5,14 +5,9 @@ const menuItems = [
     { name: "Home", href: "#home" },
     { name: "Services", href: "#services" },
     { 
-        name: "Our Work", 
-        href: "#projects",
-        submenu: [
-            { name: "Mr. Arvind Yadav", href: "/ourwork/arvind-yadav" },
-            { name: "Mr. Ajay Lagad", href: "/ourwork/ajay-lagad" },
-            { name: "Mr. Prathamesh Sakarkar", href: "/ourwork/prathamesh-sakarkar" },
-            // ... other submenu items
-        ]
+        name: "Projects", 
+        href: "/all",
+
     },
     { name: "About Us", href: "#about" },
 ];

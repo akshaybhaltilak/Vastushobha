@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { database } from './Firebase';
 import { ref, onValue } from 'firebase/database';
-import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
+import { useNavigate } from 'react-router-dom';
 
-const ProjectsHorizontal = () => {
+const AllProjects = () => {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedProject, setSelectedProject] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [filter, setFilter] = useState('all');
+    const navigate = useNavigate();
 
     useEffect(() => {
         const projectsRef = ref(database, 'projects');
@@ -71,20 +73,21 @@ const ProjectsHorizontal = () => {
         }
     };
 
-    // Limit to first 6 projects for horizontal display
-    const displayProjects = projects.slice(0, 6);
+    const filteredProjects = filter === 'all' 
+        ? projects 
+        : projects.filter(project => project.category === filter);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
             <Helmet>
-                <title>Our Projects | Vastushobha Construction</title>
+                <title>All Projects | Vastushobha Construction</title>
                 <meta 
                     name="description" 
-                    content="Explore our portfolio of residential, commercial, and institutional projects. View completed works and ongoing developments by Vastushobha Construction." 
+                    content="Browse our complete portfolio of construction projects including residential, commercial, and institutional developments." 
                 />
             </Helmet>
 
-            {/* Enhanced Hero Section */}
+            {/* Hero Section */}
             <div className="relative bg-gradient-to-r from-slate-900 via-gray-800 to-slate-900 overflow-hidden">
                 <div className="absolute inset-0">
                     <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-gray-800/80 to-slate-900/90 z-10"></div>
@@ -97,18 +100,18 @@ const ProjectsHorizontal = () => {
                 <div className="relative z-20 max-w-7xl mx-auto py-24 px-4 sm:py-32 sm:px-6 lg:px-8">
                     <div className="text-center">
                         <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent mb-6">
-                            Our Projects
+                            Our Portfolio
                         </h1>
                         <p className="mt-6 text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-                            Showcasing our excellence in construction across various sectors including residential, commercial, and institutional projects.
+                            Explore our complete collection of construction projects across all categories and statuses.
                         </p>
                         <div className="mt-8 flex justify-center">
                             <div className="flex space-x-4">
                                 <div className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
-                                    <span className="text-white font-semibold">{projects.length}+ Projects</span>
+                                    <span className="text-white font-semibold">{projects.length} Projects</span>
                                 </div>
                                 <div className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
-                                    <span className="text-white font-semibold">Multiple Categories</span>
+                                    <span className="text-white font-semibold">Complete Portfolio</span>
                                 </div>
                             </div>
                         </div>
@@ -116,11 +119,41 @@ const ProjectsHorizontal = () => {
                 </div>
             </div>
 
-            {/* Horizontal Scrolling Projects Section */}
+            {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="mb-8">
-                    <h2 className="text-3xl font-bold text-gray-900 mb-4">Featured Projects</h2>
-                    <p className="text-gray-600">Explore our latest and most notable construction projects</p>
+                {/* Filters and Title */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-6">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-900 mb-2">All Projects</h2>
+                        <p className="text-gray-600">Browse our complete construction portfolio</p>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-3">
+                        <button
+                            onClick={() => setFilter('all')}
+                            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${filter === 'all' ? 'bg-red-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+                        >
+                            All Projects
+                        </button>
+                        <button
+                            onClick={() => setFilter('Residential')}
+                            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${filter === 'Residential' ? 'bg-emerald-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+                        >
+                            Residential
+                        </button>
+                        <button
+                            onClick={() => setFilter('Commercial')}
+                            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${filter === 'Commercial' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+                        >
+                            Commercial
+                        </button>
+                        <button
+                            onClick={() => setFilter('Institutional')}
+                            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${filter === 'Institutional' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+                        >
+                            Institutional
+                        </button>
+                    </div>
                 </div>
 
                 {loading ? (
@@ -130,7 +163,7 @@ const ProjectsHorizontal = () => {
                             <div className="absolute inset-0 rounded-full border-4 border-red-100"></div>
                         </div>
                     </div>
-                ) : displayProjects.length === 0 ? (
+                ) : filteredProjects.length === 0 ? (
                     <div className="text-center py-20 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-12">
                         <div className="mx-auto h-24 w-24 text-gray-400 mb-4">
                             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-full h-full">
@@ -138,149 +171,101 @@ const ProjectsHorizontal = () => {
                             </svg>
                         </div>
                         <h3 className="text-2xl font-bold text-gray-900 mb-2">No projects found</h3>
-                        <p className="text-gray-600">No projects have been added yet</p>
+                        <p className="text-gray-600">No projects match your selected filter</p>
+                        <button 
+                            onClick={() => setFilter('all')}
+                            className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                        >
+                            Reset Filters
+                        </button>
                     </div>
                 ) : (
-                    <>
-                        {/* Horizontal Scrolling Container */}
-                        <div className="relative">
-                            <div className="overflow-x-auto pb-6 scrollbar-hide">
-                                <div className="flex space-x-6 w-max">
-                                    {displayProjects.map((project) => (
-                                        <div key={project.id} className="group relative flex flex-col w-80 rounded-2xl overflow-hidden bg-white/80 backdrop-blur-sm shadow-xl border border-white/20 hover:shadow-2xl hover:scale-105 transition-all duration-300 flex-shrink-0">
-                                            {/* Project Image */}
-                                            <div className="relative h-56 overflow-hidden">
-                                                <img
-                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                                    src={project.imageUrl || 'https://via.placeholder.com/600x400?text=Vastushobha'}
-                                                    alt={project.title}
-                                                    onError={(e) => {
-                                                        e.target.onerror = null;
-                                                        e.target.src = 'https://via.placeholder.com/600x400?text=Vastushobha';
-                                                    }}
-                                                />
-                                                
-                                                {/* Gradient Overlay */}
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                                                
-                                                {/* Featured Badge */}
-                                                {project.featured && (
-                                                    <div className="absolute top-4 right-4 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
-                                                        ⭐ Featured
-                                                    </div>
-                                                )}
-                                                
-                                                {/* Category Badge */}
-                                                <div className="absolute top-4 left-4">
-                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold text-white bg-gradient-to-r ${getCategoryColor(project.category)} shadow-lg`}>
-                                                        {project.category}
-                                                    </span>
-                                                </div>
-                                                
-                                                {/* Status Badge */}
-                                                <div className="absolute bottom-4 left-4">
-                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(project.status)} shadow-lg`}>
-                                                        {project.status}
-                                                    </span>
-                                                </div>
-                                                
-                                                {/* Year Badge */}
-                                                {project.year && (
-                                                    <div className="absolute bottom-4 right-4 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/30">
-                                                        {project.year}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Project Content */}
-                                            <div className="flex-1 p-6 flex flex-col">
-                                                <div className="flex-1">
-                                                    <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">
-                                                        {project.title}
-                                                    </h3>
-                                                    
-                                                    {project.client && (
-                                                        <p className="text-sm text-gray-600 mb-3 font-medium">
-                                                            For {project.client}
-                                                        </p>
-                                                    )}
-                                                    
-                                                    <p className="text-gray-700 line-clamp-3 mb-4 leading-relaxed">
-                                                        {project.shortDescription || 'No description available.'}
-                                                    </p>
-                                                </div>
-
-                                                {/* Project Details Grid */}
-                                                <div className="grid grid-cols-1 gap-3 mb-6">
-                                                    {project.totalArea && (
-                                                        <div className="flex items-center text-sm text-gray-600">
-                                                            <svg className="h-4 w-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                                                            </svg>
-                                                            <span className="font-medium">{project.totalArea}</span>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {project.timeline && (
-                                                        <div className="flex items-center text-sm text-gray-600">
-                                                            <svg className="h-4 w-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                            <span className="font-medium">{project.timeline}</span>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {project.address && (
-                                                        <div className="flex items-center text-sm text-gray-600">
-                                                            <svg className="h-4 w-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            </svg>
-                                                            <span className="font-medium line-clamp-1">{project.address}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Action Buttons */}
-                                                <div className="flex gap-3">
-                                                    <button
-                                                        onClick={() => openModal(project)}
-                                                        className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-xl font-semibold hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
-                                                    >
-                                                        Quick View
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {filteredProjects.map((project) => (
+                            <div key={project.id} className="group relative rounded-2xl overflow-hidden bg-white/80 backdrop-blur-sm shadow-lg border border-white/20 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                                {/* Project Image */}
+                                <div className="relative h-48 overflow-hidden">
+                                    <img
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        src={project.imageUrl || 'https://via.placeholder.com/600x400?text=Vastushobha'}
+                                        alt={project.title}
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = 'https://via.placeholder.com/600x400?text=Vastushobha';
+                                        }}
+                                    />
                                     
-                                    {/* View All Projects Card */}
-                                    <div className="w-80 flex-shrink-0 flex items-center justify-center">
-                                        <Link
-                                            to="/all"
-                                            className="group relative w-full h-full min-h-[500px] bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center text-white p-8 text-center"
+                                    {/* Gradient Overlay */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                                    
+                                    {/* Featured Badge */}
+                                    {project.featured && (
+                                        <div className="absolute top-3 right-3 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                            ⭐ Featured
+                                        </div>
+                                    )}
+                                    
+                                    {/* Category Badge */}
+                                    <div className="absolute top-3 left-3">
+                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold text-white bg-gradient-to-r ${getCategoryColor(project.category)} shadow-lg`}>
+                                            {project.category}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Status Badge */}
+                                    <div className="absolute bottom-3 left-3">
+                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(project.status)}`}>
+                                            {project.status}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Year Badge */}
+                                    {project.year && (
+                                        <div className="absolute bottom-3 right-3 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-2 py-1 rounded-full border border-white/30">
+                                            {project.year}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Project Content */}
+                                <div className="p-5">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">
+                                        {project.title}
+                                    </h3>
+                                    
+                                    {project.client && (
+                                        <p className="text-xs text-gray-600 mb-2 font-medium">
+                                            For {project.client}
+                                        </p>
+                                    )}
+                                    
+                                    <p className="text-sm text-gray-700 line-clamp-3 mb-4 leading-relaxed">
+                                        {project.shortDescription || 'No description available.'}
+                                    </p>
+
+                                    {/* Project Details Grid */}
+                                    {project.totalArea && (
+                                        <div className="flex items-center text-xs text-gray-600 mb-2">
+                                            <svg className="h-3 w-3 text-gray-400 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                                            </svg>
+                                            <span>{project.totalArea}</span>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Action Buttons */}
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => openModal(project)}
+                                            className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
                                         >
-                                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors duration-300"></div>
-                                            <div className="relative z-10 flex flex-col items-center">
-                                                <div className="mb-6 p-4 bg-white/20 backdrop-blur-sm rounded-full">
-                                                    <svg className="h-12 w-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                    </svg>
-                                                </div>
-                                                <h3 className="text-2xl font-bold mb-4">View All Projects</h3>
-                                                <p className="text-lg text-white/90 mb-6">
-                                                    Explore our complete portfolio of {projects.length} projects
-                                                </p>
-                                                <div className="px-6 py-3 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 group-hover:bg-white/30 transition-colors duration-300">
-                                                    <span className="font-semibold">Browse All →</span>
-                                                </div>
-                                            </div>
-                                        </Link>
+                                            View Details
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </>
+                        ))}
+                    </div>
                 )}
             </div>
 
@@ -420,19 +405,8 @@ const ProjectsHorizontal = () => {
                     </div>
                 </div>
             )}
-
-            {/* Custom Scrollbar Styles */}
-            <style jsx>{`
-                .scrollbar-hide {
-                    -ms-overflow-style: none;
-                    scrollbar-width: none;
-                }
-                .scrollbar-hide::-webkit-scrollbar {
-                    display: none;
-                }
-            `}</style>
         </div>
     );
 };
 
-export default ProjectsHorizontal;
+export default AllProjects;

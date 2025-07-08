@@ -423,15 +423,7 @@ const Home = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-red-900/30 via-transparent to-transparent"></div>
                     
                     {/* Floating stats card */}
-                    <motion.div
-                      className="absolute top-3 sm:top-4 md:top-6 right-3 sm:right-4 md:right-6 bg-white/95 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg sm:shadow-xl"
-                      initial={{ opacity: 0, y: -20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5, duration: 0.6 }}
-                    >
-                      <div className="text-lg sm:text-xl md:text-2xl font-bold text-red-500">500+</div>
-                      <div className="text-xs sm:text-sm text-gray-600">Projects Done</div>
-                    </motion.div>
+                  
 
                     {/* Floating quality badge */}
                     <motion.div
@@ -508,17 +500,7 @@ const Home = () => {
 
         {/* Enhanced floating elements - Desktop only */}
         <div className="fixed top-16 sm:top-20 right-4 sm:right-8 z-40 hidden xl:block">
-          <motion.div
-            className="bg-white/90 backdrop-blur-md rounded-2xl p-4 sm:p-6 shadow-xl border border-red-100"
-            variants={floatingVariants}
-            initial="initial"
-            animate="animate"
-          >
-            <div className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-red-500 mb-1">25+</div>
-              <div className="text-xs sm:text-sm text-gray-600">Years Experience</div>
-            </div>
-          </motion.div>
+          
         </div>
 
         {/* Mobile floating contact button */}
@@ -548,7 +530,7 @@ const Home = () => {
 
         <Stats id="stats" />
         <Services id="services" />
-        <Projects id="project" />
+        <Projects id="projects" />
         <About />
         <Contactform />
       </div>
