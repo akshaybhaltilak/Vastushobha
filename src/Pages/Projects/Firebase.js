@@ -1,6 +1,6 @@
 // src/Database/firebase.js
 import { initializeApp } from 'firebase/app';
-import { getDatabase } from 'firebase/database';
+import { getDatabase, ref, onValue, set, push, remove } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAUzR6Y1fUZ7s9b0eY00ZhXlXheKTCQjnA",
@@ -19,4 +19,12 @@ const app = initializeApp(firebaseConfig);
 // Initialize Realtime Database
 const database = getDatabase(app);
 
-export { database };
+// Export database and all the functions you'll need in your components
+export { 
+  database, 
+  ref, 
+  onValue, 
+  set, 
+  push, 
+  remove 
+};
