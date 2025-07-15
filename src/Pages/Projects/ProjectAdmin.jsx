@@ -4,9 +4,15 @@ import { ref, onValue, set, push, remove } from 'firebase/database';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+// Cloudinary configuration
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dvfa1ub9w";
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UNSIGNED_PRESET || "Vasstushobha";
+const CLOUD_FOLDER = "vastushobhaimage";
+
 const ProjectsAdmin = () => {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [imageUploading, setImageUploading] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
         category: 'Residential',
@@ -17,13 +23,13 @@ const ProjectsAdmin = () => {
         budget: '',
         client: '',
         year: '',
-        slug: '',
         imageUrl: '',
         featured: false,
         status: 'Completed'
     });
     const [editingId, setEditingId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [uploadError, setUploadError] = useState(null);
 
     useEffect(() => {
         const projectsRef = ref(database, 'projects');
@@ -63,6 +69,85 @@ const ProjectsAdmin = () => {
         });
     };
 
+    const uploadImageToCloudinary = async (file) => {
+        if (!file) return null;
+
+        try {
+            setImageUploading(true);
+            setUploadError(null);
+
+            const data = new FormData();
+            data.append("file", file);
+            data.append("upload_preset", UPLOAD_PRESET); // Correct key for unsigned upload
+            data.append("folder", CLOUD_FOLDER); // Correct key for folder
+
+            // Use project title as public_id if available, otherwise generate a unique name
+            const publicId = formData.title?.trim() || `project_${Date.now()}`;
+            data.append("public_id", publicId);
+
+            // Use the cloud name variable in the URL
+            const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+
+            const res = await fetch(url, {
+                method: "POST",
+                body: data,
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || "Failed to upload image");
+            }
+
+            const result = await res.json();
+            return result.secure_url;
+        } catch (err) {
+            console.error("Cloudinary upload error:", err);
+            setUploadError(err.message || "Error uploading image to Cloudinary");
+            return null;
+        } finally {
+            setImageUploading(false);
+        }
+    };
+
+    const handleImageChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate file type and size
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+
+        if (!validTypes.includes(file.type)) {
+            toast.error('Please upload a valid image (JPEG, PNG, or WebP)');
+            return;
+        }
+
+        if (file.size > maxSize) {
+            toast.error('Image size should be less than 5MB');
+            return;
+        }
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            setFormData(prev => ({
+                ...prev,
+                imageUrl: event.target.result // Temporary preview URL
+            }));
+        };
+        reader.readAsDataURL(file);
+
+        // Upload to Cloudinary
+        const cloudinaryUrl = await uploadImageToCloudinary(file);
+        if (cloudinaryUrl) {
+            setFormData(prev => ({
+                ...prev,
+                imageUrl: cloudinaryUrl // Permanent Cloudinary URL
+            }));
+            toast.success('Image uploaded successfully!');
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         
@@ -70,7 +155,7 @@ const ProjectsAdmin = () => {
             setLoading(true);
             
             // Basic validation
-            if (!formData.title || !formData.imageUrl || !formData.slug) {
+            if (!formData.title || !formData.imageUrl) {
                 toast.error("Please fill in all required fields");
                 setLoading(false);
                 return;
@@ -105,12 +190,12 @@ const ProjectsAdmin = () => {
                 budget: '',
                 client: '',
                 year: '',
-                slug: '',
                 imageUrl: '',
                 featured: false,
                 status: 'Completed'
             });
             setEditingId(null);
+            setUploadError(null);
             
         } catch (error) {
             console.error("Error saving project: ", error);
@@ -131,7 +216,6 @@ const ProjectsAdmin = () => {
             budget: project.budget || '',
             client: project.client || '',
             year: project.year || '',
-            slug: project.slug || '',
             imageUrl: project.imageUrl || '',
             featured: project.featured || false,
             status: project.status || 'Completed'
@@ -234,34 +318,78 @@ const ProjectsAdmin = () => {
                                     </select>
                                 </div>
                                 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        URL Slug *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="slug"
-                                        value={formData.slug}
-                                        onChange={handleInputChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                        required
-                                        placeholder="project-name"
-                                    />
-                                </div>
-                                
                                 <div className="sm:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Image URL *
+                                        Project Image *
                                     </label>
-                                    <input
-                                        type="url"
-                                        name="imageUrl"
-                                        value={formData.imageUrl}
-                                        onChange={handleInputChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                        required
-                                        placeholder="https://example.com/image.jpg"
-                                    />
+                                    {formData.imageUrl ? (
+                                        <div className="mb-4">
+                                            <img 
+                                                src={formData.imageUrl} 
+                                                alt="Preview" 
+                                                className="h-32 w-auto object-cover rounded-lg mb-2"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({...formData, imageUrl: ''})}
+                                                className="text-sm text-red-600 hover:text-red-800"
+                                            >
+                                                Change Image
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex items-center justify-center w-full mb-2">
+                                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                        {imageUploading ? (
+                                                            <div className="flex items-center">
+                                                                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                </svg>
+                                                                <span>Uploading...</span>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                                                                    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                                                                </svg>
+                                                                <p className="mb-2 text-sm text-gray-500">
+                                                                    <span className="font-semibold">Click to upload</span> or drag and drop
+                                                                </p>
+                                                                <p className="text-xs text-gray-500">
+                                                                    JPEG, PNG, or WebP (MAX. 5MB)
+                                                                </p>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    <input 
+                                                        id="dropzone-file" 
+                                                        type="file" 
+                                                        className="hidden" 
+                                                        accept="image/jpeg,image/png,image/webp"
+                                                        onChange={handleImageChange}
+                                                        disabled={imageUploading}
+                                                    />
+                                                </label>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="url"
+                                                    name="imageUrl"
+                                                    value={formData.imageUrl}
+                                                    onChange={e => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                                    placeholder="Or paste an image URL here"
+                                                    disabled={imageUploading}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                    {uploadError && (
+                                        <div className="text-red-500 text-sm mt-2">{uploadError}</div>
+                                    )}
                                 </div>
                                 
                                 {/* Optional Fields */}
@@ -393,12 +521,12 @@ const ProjectsAdmin = () => {
                                                 budget: '',
                                                 client: '',
                                                 year: '',
-                                                slug: '',
                                                 imageUrl: '',
                                                 featured: false,
                                                 status: 'Completed'
                                             });
                                             setEditingId(null);
+                                            setUploadError(null);
                                         }}
                                         className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
                                     >
@@ -407,7 +535,7 @@ const ProjectsAdmin = () => {
                                 )}
                                 <button
                                     type="submit"
-                                    disabled={loading}
+                                    disabled={loading || imageUploading}
                                     className="px-6 py-2.5 bg-red-600 rounded-lg text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
                                     {loading ? (
